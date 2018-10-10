@@ -1,8 +1,9 @@
+const Promise = require('bluebird');
 const fs = require('fs');
 const path = require('path');
 const _ = require('underscore');
 const counter = require('./counter');
-
+const readdir = Promise.promisify(fs.readdir);
 var items = {};
 
 // Public API - Fix these CRUD functions ///////////////////////////////////////
@@ -30,29 +31,7 @@ exports.create = (text, callback) => {
   });
 };
 
-exports.readAll = (callback) => {
-  fs.readdir(exports.dataDir, 'utf8', (err, files) => {
-    if (err) {
-      callback(new Error('Error'));
-    } else {
-      var data = [];
-      files.forEach((ele, i) => {
-        var cutChar = ele.slice(0, ele.length - 4);
-        var obj = {id: cutChar, text: cutChar};
-        data.push(obj);
-        //console.log(data)
-      });
-      callback(null, data);
-    // files.forEach(function(ele, index) {
-    //   exports.readOne(ele.slice(0, ele.length - 4), (err, value) => {
-    //     data.push(value);
-    //     console.log(data);  
-    //     })
-    //   })
-      // callback(null,)
-    }
-  }); 
-};
+
 
 exports.readOne = (id, callback) => {
   // console.log(exports.dataDir + '/' + id + '.txt')
@@ -64,6 +43,46 @@ exports.readOne = (id, callback) => {
       callback(null, { id, text });
     }
   });
+};
+
+const readone = Promise.promisify(exports.readOne)
+
+exports.readAll = (callback) => {
+    return readdir(exports.dataDir, 'utf8')
+      .then((fileNames) => {
+        return Promise.all(fileNames.map((ele) => {
+          //var fullPath = Path.join()
+          var id = path.basename(ele, '.txt');
+          return readone(id);
+        }))
+      })
+      .then((data) => {
+        callback(null, data)
+      })
+      .error(()=>{
+        console.log('error')
+      })
+  // fs.readdir(exports.dataDir, 'utf8', (err, files) => {
+  //   if (err) {
+  //     callback(new Error('Error'));
+  //   } else {
+  //     var data = [];
+  //     files.forEach((ele, i) => {
+  //       var cutChar = ele.slice(0, ele.length - 4);
+  //       var obj = {id: cutChar, text: cutChar};
+  //       data.push(obj);
+  //       //console.log(data)
+  //     });
+      // callback(null, data);
+    // files.forEach(function(ele, index) {
+    //   exports.readOne(ele.slice(0, ele.length - 4), (err, value) => {
+    //     data.push(value);
+    //     console.log(data);  
+    //     })
+    //   })
+      // callback(null,)
+  //   }
+  // }); 
 };
 
 exports.update = (id, text, callback) => {
